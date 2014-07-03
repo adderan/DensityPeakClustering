@@ -39,12 +39,13 @@ find.dc <- function(data, neighborRateLow, neighborRateHigh) {
 	avg.neighbors <- 0.0
 
 	while((avg.neighbors < n.low) || (avg.neighbors > n.high)) {
+		cat("dc = ", dc, "\n")
 		rho <- local.density(data, dc)
 		avg.neighbors <- mean(rho)
 		if(avg.neighbors < n.low) {
 			dc <- dc + dcstep
 		}
-		else if(avg.neighbors > n.high) {
+		if(avg.neighbors > n.high) {
 			dc <- dc - dcstep
 		}
 	}
@@ -52,7 +53,7 @@ find.dc <- function(data, neighborRateLow, neighborRateHigh) {
 }
 
 #find the minimum distance between each point and another point with higher density
-distance.to.higher.density(data, rho) {
+distance.to.higher.density <- function(data, rho) {
 	n.points <- dim(data)[[1]]
 	delta <- c(rep(0, times=n.points))
 
@@ -77,7 +78,7 @@ distance.to.higher.density(data, rho) {
 	return(delta)
 }
 
-assign.to.clusters(data, cluster.centers, dc) {
+assign.to.clusters <- function(data, cluster.centers, dc) {
 	n.points <- dim(data)[[1]]
 	cluster.assignments <- c(rep(0, times=n.points))
 
@@ -99,7 +100,7 @@ assign.to.clusters(data, cluster.centers, dc) {
 dpc <- function(data, n.clusters, neighborsLow, neighborsHigh) {
 	n.points <- dim(data)[[1]]
 
-	dc <- find.dc(data, dcmin, dcmax)
+	dc <- find.dc(data, neighborsLow, neighborsHigh)
 	rho <- local.density(data, dc)
 	delta <- distance.to.higher.density(data, rho)
 
