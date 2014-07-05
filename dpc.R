@@ -3,11 +3,14 @@
 distance <- function(pt1, pt2) {
 	r <- 0
 	dimensions <- length(pt1)
+	#print(dimensions)
+	#print(length(pt2))
 	stopifnot(length(pt1) == length(pt2))
 
 	for(i in 1:dimensions) {
 		r <- r + (pt1[i] - pt2[i])*(pt1[i] - pt2[i])
 	}
+	#cat("distance = ", sqrt(r), "\n")
 	return(sqrt(r))
 }
 
@@ -30,7 +33,7 @@ local.density <- function(data, dc) {
 
 #find a value of dc such that the mean number of neighbors is within the desired range
 find.dc <- function(data, neighborRateLow, neighborRateHigh) {
-	dcstep <- 0.01
+	dcstep <- 0.1
 
 	n.points <- dim(data)[[1]]
 	n.low <- neighborRateLow * n.points
@@ -38,15 +41,16 @@ find.dc <- function(data, neighborRateLow, neighborRateHigh) {
 	dc <- 0.0
 	avg.neighbors <- 0.0
 
-	while((avg.neighbors < n.low) || (avg.neighbors > n.high)) {
+	while((avg.neighbors < n.low)) {
 		cat("dc = ", dc, "\n")
 		rho <- local.density(data, dc)
+		print(rho)
 		avg.neighbors <- mean(rho)
 		if(avg.neighbors < n.low) {
 			dc <- dc + dcstep
 		}
 		if(avg.neighbors > n.high) {
-			dc <- dc - dcstep
+			#dc <- dc - dcstep
 		}
 	}
 	return(dc)
@@ -73,10 +77,32 @@ distance.to.higher.density <- function(data, rho) {
 				}
 			}
 		}
-		delta[i] <- min.dist.to.higher
+		if(!has.highest.density) {
+			delta[i] <- min.dist.to.higher
+		}
+		else {
+			delta[i] <- distance.to.furthest(data, i)
+		}
 	}
 	return(delta)
 }
+
+#find the distance from this point to the furthest data point. This distance is assigned as delta for the highest density point
+distance.to.furthest <- function(data, point) {
+	n.points <- dim(data)[[1]]
+	max.distance <- 0
+	pt1 <- data[point,]
+	for(i in 1:n.points) {
+		if(i == point) next
+		pt2 <- data[i,]
+		this.distance <- distance(pt1, pt2)
+		if(this.distance > max.distance) {
+			max.distance <- this.distance
+		}
+	}
+	return(max.distance)
+}
+
 
 assign.to.clusters <- function(data, cluster.centers, dc) {
 	n.points <- dim(data)[[1]]
@@ -104,19 +130,30 @@ dpc <- function(data, n.clusters, neighborsLow, neighborsHigh) {
 	rho <- local.density(data, dc)
 	delta <- distance.to.higher.density(data, rho)
 
-
-	rho.norm <- rho / sum(rho)
-	delta.norm <- delta / sum(delta)
-
+	cat("delta un-normalized: ")
+	print(delta)
+	cat("rho un-normalized: ")
+	print(rho)
+	rho.norm <- rho / max(rho)
+	delta.norm <- delta / max(delta)
+	cat("delta normalized: ")
+	print(delta.norm)
+	cat("rho normalized: ")
+	print(rho.norm)
 	#find objects with the maximum rho*delta
 	rho.delta <- c(rep(0, times=n.points))
 	for(i in 1:n.points) {
 		rho.delta[i] <- rho.norm[i]*delta.norm[i]
 	}
-	cluster.centers <- c(rep(0, times=n.points))
+	cluster.centers <- c(rep(0, times=n.clusters))
+	cat("rho.delta :")
+	print(rho.delta)
 	for(c in 1:n.clusters) {
 		cluster.centers[c] <- which.max(rho.delta)
 		rho.delta[cluster.centers[c]] <- 0
 	}
+	cat("cluster centers: ")
+	print(cluster.centers)
+
 	return(assign.to.clusters(data, cluster.centers, dc))
 }
