@@ -1,5 +1,5 @@
 
-#find the distance between points 1 and 2 in n-dimensional space, where n is the number of features of the objects being clustered
+#find the distance between points 1 and 2 in the feature space
 distance <- function(pt1, pt2) {
 	r <- 0
 	dimensions <- length(pt1)
@@ -42,9 +42,9 @@ find.dc <- function(data, neighborRateLow, neighborRateHigh) {
 	avg.neighbors <- 0.0
 
 	while((avg.neighbors < n.low)) {
-		cat("dc = ", dc, "\n")
+		#cat("dc = ", dc, "\n")
 		rho <- local.density(data, dc)
-		print(rho)
+		#print(rho)
 		avg.neighbors <- mean(rho)
 		if(avg.neighbors < n.low) {
 			dc <- dc + dcstep
@@ -103,57 +103,62 @@ distance.to.furthest <- function(data, point) {
 	return(max.distance)
 }
 
-
+#assign each point to one of the cluster centers. The cluster centers are determined by ranking rho*delta
 assign.to.clusters <- function(data, cluster.centers, dc) {
 	n.points <- dim(data)[[1]]
 	cluster.assignments <- c(rep(0, times=n.points))
 
 	for(i in 1:n.points) {
 		min.distance.to.cluster <- .Machine$double.xmax
+		nearest.cluster <- -1
 		for(j in 1:length(cluster.centers)) {
 			c <- cluster.centers[j]
 			distance.to.this.cluster <- distance(data[i,], data[c,])
 			if(distance.to.this.cluster < min.distance.to.cluster) {
 				min.distance.to.cluster <- distance.to.this.cluster
-				cluster.assignments[i] <- j
+				nearest.cluster <- j
 			}
 		}
+		cluster.assignments[i] <- nearest.cluster
 	}
 	return(cluster.assignments)
 }
 
 #cluster the objects. Data matrix should be (objects x features). 
-dpc <- function(data, n.clusters, neighborsLow, neighborsHigh) {
+dpc <- function(data, n.clusters, neighborsLow=0.016, neighborsHigh=0.02) {
 	n.points <- dim(data)[[1]]
 
 	dc <- find.dc(data, neighborsLow, neighborsHigh)
 	rho <- local.density(data, dc)
 	delta <- distance.to.higher.density(data, rho)
 
-	cat("delta un-normalized: ")
-	print(delta)
-	cat("rho un-normalized: ")
-	print(rho)
 	rho.norm <- rho / max(rho)
 	delta.norm <- delta / max(delta)
-	cat("delta normalized: ")
-	print(delta.norm)
-	cat("rho normalized: ")
-	print(rho.norm)
-	#find objects with the maximum rho*delta
 	rho.delta <- c(rep(0, times=n.points))
 	for(i in 1:n.points) {
 		rho.delta[i] <- rho.norm[i]*delta.norm[i]
 	}
 	cluster.centers <- c(rep(0, times=n.clusters))
-	cat("rho.delta :")
-	print(rho.delta)
+	distance.from.a.cluster <- c(rep(1, times=n.points))  #ensures that new cluster centers are far from existing clusters
+	#cat("rho.delta :")
+	#print(rho.delta)
 	for(c in 1:n.clusters) {
-		cluster.centers[c] <- which.max(rho.delta)
-		rho.delta[cluster.centers[c]] <- 0
+		rho.delta.distance <- c(rep(0,times=n.points))
+		for(i in 1:n.points) {
+			rho.delta.distance[i] <- rho.delta[i]*distance.from.a.cluster[i]
+		}
+		cluster.centers[c] <- which.max(rho.delta.distance)
+		new.cluster <- cluster.centers[c]
+		rho.delta[new.cluster] <- 0
+		for(i in 1:n.points) {
+			distance.to.new.cluster <- distance(data[i,], data[new.cluster,])
+			if((distance.from.a.cluster[i] == 1) || (distance.from.a.cluster[i] > distance.to.new.cluster)) {
+				distance.from.a.cluster[i] <- distance.to.new.cluster
+			}
+		}
 	}
-	cat("cluster centers: ")
-	print(cluster.centers)
+	#cat("cluster centers: ")
+	#print(cluster.centers)
 
 	return(assign.to.clusters(data, cluster.centers, dc))
 }
