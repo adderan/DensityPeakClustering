@@ -42,7 +42,7 @@ find.dc <- function(data, neighborRateLow, neighborRateHigh) {
 	avg.neighbors <- 0.0
 
 	while((avg.neighbors < n.low)) {
-		#cat("dc = ", dc, "\n")
+		cat("dc = ", dc, "\n")
 		rho <- local.density(data, dc)
 		#print(rho)
 		avg.neighbors <- mean(rho)
